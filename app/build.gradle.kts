@@ -11,9 +11,9 @@ android {
     defaultConfig {
         applicationId = "fun.wqiang.oddprint"
         minSdk = 24
-        35.also { targetSdk = it }
-        versionCode = 5
-        versionName = "1.4"
+        34.also { targetSdk = it }
+        versionCode = 6
+        versionName = "1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -50,7 +50,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.volley)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

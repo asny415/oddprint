@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.奇偶打印" parent="android:Theme.DeviceDefault.NoActionBar" />
+    <style name="Theme.OddPrint" parent="android:Theme.DeviceDefault.NoActionBar" />
 </resources>
