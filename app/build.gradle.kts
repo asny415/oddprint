@@ -6,15 +6,14 @@ plugins {
 
 android {
     namespace = "fun.wqiang.oddprint"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "fun.wqiang.oddprint"
         minSdk = 24
-        targetSdk = 34
-        versionCode = 4
-        versionName = "1.3"
-
+        35.also { targetSdk = it }
+        versionCode = 5
+        versionName = "1.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -27,6 +26,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -37,6 +37,7 @@ android {
     buildFeatures {
         compose = true
     }
+
 }
 
 dependencies {
