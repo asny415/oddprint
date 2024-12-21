@@ -58,6 +58,7 @@ import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
 import android.print.PrintManager
+import android.util.Size
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -165,12 +166,27 @@ fun stringToPageNumbers(input: String): List<Int> {
 fun calculatePageLayout(
     totalPages: Int,
     pageIndex: Int,
+    bitmapWidth: Int,
+    bitmapHeight: Int,
     pageWidth: Int,
     pageHeight: Int,
     margin: Int
 ): Pair<Rect?, Matrix?> {
+    //一个页面对应一个页面
+    val matrix = Matrix()
+    val bitmapRatio = bitmapWidth.toFloat() / bitmapHeight
+    val pageRatio = pageWidth.toFloat() / pageHeight
+    var pWidth = pageWidth
+    var pHeight = pageHeight
+    if (bitmapRatio > 1 && pageRatio < 1 || bitmapRatio < 1 && pageRatio > 1) {
+        matrix.postRotate(-90f )
+        matrix.postTranslate(0f, pageWidth.toFloat())
+        pWidth = pageHeight
+        pHeight = pageWidth
+    }
+    matrix.postScale(bitmapWidth.toFloat()/ pWidth, bitmapHeight.toFloat()/pHeight);
     if (totalPages == 1) {
-        return Pair(null, null)
+        return Pair(null, matrix)
     }
 
     // 计算行数和列数
@@ -178,35 +194,33 @@ fun calculatePageLayout(
     val numCols = ceil(totalPages.toDouble() / numRows).toInt()
 
 
-    val ratio = pageWidth.toFloat() / pageHeight.toFloat()
     // 计算总宽度和总高度
-    val totalWidthPortrait = numCols * pageWidth + (numCols + 1) * margin
-    val totalHeightPortrait = numRows * pageHeight + (numRows + 1) * margin
-    val ratioPortrait = max(totalWidthPortrait.toFloat()/pageWidth, totalHeightPortrait.toFloat()/pageHeight)
+    val totalWidthPortrait = numCols * bitmapWidth + (numCols + 1) * margin
+    val totalHeightPortrait = numRows * bitmapHeight + (numRows + 1) * margin
+    val ratioPortrait = max(totalWidthPortrait.toFloat()/bitmapWidth, totalHeightPortrait.toFloat()/bitmapHeight)
 
-    val totalWidthLandscape = numCols * pageHeight + (numCols + 1) * margin
-    val totalHeightLandscape = numRows * pageWidth + (numRows + 1) * margin
-    val ratioLandscape = max(totalWidthLandscape.toFloat()/pageWidth, totalHeightLandscape.toFloat()/pageHeight)
+    val totalWidthLandscape = numCols * bitmapHeight + (numCols + 1) * margin
+    val totalHeightLandscape = numRows * bitmapWidth + (numRows + 1) * margin
+    val ratioLandscape = max(totalWidthLandscape.toFloat()/bitmapWidth, totalHeightLandscape.toFloat()/bitmapHeight)
 
     val mode = if (ratioPortrait < ratioLandscape) 0 else 1
     val realRatio = if (mode == 0) ratioPortrait else ratioLandscape
-    val realWidth = if (mode == 0)  ((pageWidth - (numCols+ 1) * margin) / realRatio).toInt() else ((pageHeight - (numCols + 1) * margin) / realRatio).toInt()
-    val realHeight = if (mode == 0)  ((pageHeight- (numRows+ 1) * margin) / realRatio).toInt() else ((pageWidth - (numRows + 1) * margin) / realRatio).toInt()
+    val realWidth = if (mode == 0)  ((bitmapWidth - (numCols+ 1) * margin) / realRatio).toInt() else ((bitmapHeight - (numCols + 1) * margin) / realRatio).toInt()
+    val realHeight = if (mode == 0)  ((bitmapHeight- (numRows+ 1) * margin) / realRatio).toInt() else ((bitmapWidth - (numRows + 1) * margin) / realRatio).toInt()
 
     // 计算页面位置
     val row = pageIndex / numCols
     val col = pageIndex % numCols
-    val extraMarginX = (pageWidth - (numCols * (realWidth + margin) + margin )) / 2
-    val extraMarginY = (pageHeight - (numRows * (realHeight + margin) + margin)) / 2
+    val extraMarginX = (bitmapWidth - (numCols * (realWidth + margin) + margin )) / 2
+    val extraMarginY = (bitmapHeight - (numRows * (realHeight + margin) + margin)) / 2
     val left = margin + col * (realWidth + margin) + extraMarginX
     val top = margin + row * (realHeight + margin) + extraMarginY
     val pageRect = Rect(left , top , left + realWidth, top + realHeight)
 
     // 创建变换矩阵
-    val matrix = Matrix()
     if (mode == 1) {
         matrix.postRotate(-90f )
-        matrix.postTranslate(0f, pageWidth.toFloat())
+        matrix.postTranslate(0f, bitmapWidth.toFloat())
     }
     matrix.postScale(1/realRatio, 1/realRatio)
     matrix.postTranslate(left.toFloat(), top.toFloat())
@@ -221,26 +235,29 @@ fun render(
     pageRangeSelection: String?,
     pageRangeCustom: String?,
     renderMode: Int
-): Bitmap {
+): Pair<Bitmap,Size> {
     val totalPages = ceil(pdfRenderer.pageCount.toFloat() / singlePagePrintCount)
     val pages = range2list(totalPages.toInt(), pageRangeSelection, pageRangeCustom);
     val thisPageList = ((pages[pageNumber] * singlePagePrintCount) ..< ((pages[pageNumber]+1)*singlePagePrintCount)).toList().filter { it < pdfRenderer.pageCount }
     var bitmap: Bitmap? = null
-    Log.d("TEST", "thisPageList: $thisPageList")
+    val dpi = if (renderMode == PdfRenderer.Page.RENDER_MODE_FOR_PRINT ) 300 else 72
+    Log.d("TEST", "thisPageList: $thisPageList dpi: $dpi")
+    var width=0
+    var height=0
     for ( index in thisPageList.indices) {
         val page = pdfRenderer.openPage(thisPageList[index])
         if (bitmap == null) {
-            val width = page.width
-            val height = page.height
+            width = page.width * dpi / 72
+            height = page.height * dpi / 72
             val config = Bitmap.Config.ARGB_8888
             bitmap = Bitmap.createBitmap(width, height, config)
         }
-        val (pageRect, pageMatrix) = calculatePageLayout(singlePagePrintCount, index, page.width, page.height,10)
+        val (pageRect, pageMatrix) = calculatePageLayout(singlePagePrintCount, index, width, height, page.width, page.height,10 * dpi / 72)
         Log.d("TEST", "pageRect: $pageRect pageMatrix: $pageMatrix pageWidth: ${page.width} pageHeight: ${page.height}")
         page.render(bitmap, pageRect, pageMatrix, renderMode)
         page.close()
     }
-    return bitmap!!
+    return Pair(bitmap!!, Size(width, height))
 }
 
 fun getPdfFileName(context: Context, uri: Uri): String? {
@@ -298,12 +315,12 @@ suspend fun printPdf(context :Context, uri: Uri?, singlePagePrintCount: Int, pag
                 val document = PdfDocument()
                 val selectedPages = range2list(ceil(pdfRenderer.pageCount.toFloat() / singlePagePrintCount).toInt() , pageRangeSelection, pageRangeCustom)
                 for (index in selectedPages.indices) {
-                    val bitmap = render(pdfRenderer, index, singlePagePrintCount, pageRangeSelection, pageRangeCustom,PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
-                    val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(
-                        bitmap.width, bitmap.height, index
+                    val (bitmap,pageSize) = render(pdfRenderer, index, singlePagePrintCount, pageRangeSelection, pageRangeCustom,PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                    val pageInfo = PdfDocument.PageInfo.Builder(
+                        pageSize.width, pageSize.height, index
                     ).create()
                     val page = document.startPage(pageInfo)
-                    page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+                    page.canvas.drawBitmap(bitmap, Rect(0,0,bitmap.width, bitmap.height),Rect(0,0,page.canvas.width, page.canvas.height),  null)
                     document.finishPage(page)
                     bitmap.recycle()
                 }
