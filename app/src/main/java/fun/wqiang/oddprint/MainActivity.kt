@@ -150,7 +150,7 @@ fun stringToPageNumbers(input: String): List<Int> {
         }
     }
 
-    return pageNumbers.map({it - 1}).toList().sorted() // 返回排序后的页码列表
+    return pageNumbers.map { it - 1 }.toList().sorted() // 返回排序后的页码列表
 }
 
 /**
@@ -184,7 +184,7 @@ fun calculatePageLayout(
         pWidth = pageHeight
         pHeight = pageWidth
     }
-    matrix.postScale(bitmapWidth.toFloat()/ pWidth, bitmapHeight.toFloat()/pHeight);
+    matrix.postScale(bitmapWidth.toFloat()/ pWidth, bitmapHeight.toFloat()/pHeight)
     if (totalPages == 1) {
         return Pair(null, matrix)
     }
@@ -237,7 +237,7 @@ fun render(
     renderMode: Int
 ): Pair<Bitmap,Size> {
     val totalPages = ceil(pdfRenderer.pageCount.toFloat() / singlePagePrintCount)
-    val pages = range2list(totalPages.toInt(), pageRangeSelection, pageRangeCustom);
+    val pages = range2list(totalPages.toInt(), pageRangeSelection, pageRangeCustom)
     val thisPageList = ((pages[pageNumber] * singlePagePrintCount) ..< ((pages[pageNumber]+1)*singlePagePrintCount)).toList().filter { it < pdfRenderer.pageCount }
     var bitmap: Bitmap? = null
     val dpi = if (renderMode == PdfRenderer.Page.RENDER_MODE_FOR_PRINT ) 300 else 72
@@ -306,7 +306,7 @@ suspend fun printPdf(context :Context, uri: Uri?, singlePagePrintCount: Int, pag
 
         override fun onWrite(
             pages: Array<out android.print.PageRange>?,
-            destination: android.os.ParcelFileDescriptor,
+            destination: ParcelFileDescriptor,
             cancellationSignal: android.os.CancellationSignal?,
             callback: WriteResultCallback
         ) {
@@ -367,7 +367,7 @@ fun Greeting(uri: Uri?) {
     }
 
     fun updatePages() {
-        if (pageCount <= 0) return;
+        if (pageCount <= 0) return
         val totalPages = ceil(pageCount.toFloat() / singlePagePrintCount)
         printPages = range2list(totalPages.toInt(), pageRangeSelection.name, customPageRange)
     }
